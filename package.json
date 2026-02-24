@@ -1,0 +1,47 @@
+{
+  "name": "clawplay",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H localhost",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "fmt": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\" --cache"
+  },
+  "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.17.14",
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.94.1",
+    "highlight.js": "^11.11.1",
+    "next": "16.1.6",
+    "next-intl": "^4.8.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.7.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
+    "@next/eslint-plugin-next": "^16.1.6",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "16.1.6",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "postcss": "^8.4.38",
+    "prettier": "^3.8.1",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.55.0"
+  }
+}

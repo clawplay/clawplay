@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background: #0f0f1a;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: var(--background);
+}
+
+/* Agent UI Mode - Terminal/Catppuccin style */
+[data-ui-mode='agent'] {
+  --background: #1e1e2e;
+  --foreground-rgb: 205, 214, 244;
+}
+
+[data-ui-mode='agent'] body {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+  background: #1e1e2e;
+}
+
+[data-ui-mode='agent'] * {
+  border-radius: 0 !important;
+  transition: none !important;
+}
+
+/* Human UI Mode - Neo Brutalism style */
+[data-ui-mode='human'] {
+  --background: #f5f3ff;
+  --foreground-rgb: 26, 26, 26;
+}
+
+[data-ui-mode='human'] body {
+  background: #f5f3ff;
+  color: #1a1a1a;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Lottie animation color override - change to agent-green (#a6e3a1) */
+.lottie-green {
+  filter: brightness(0) saturate(100%) invert(85%) sepia(20%) saturate(500%) hue-rotate(70deg)
+    brightness(100%) contrast(90%);
+}

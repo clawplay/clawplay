@@ -1,0 +1,13 @@
+{
+  "name": "clawplay",
+  "version": "1.0.0",
+  "description": "The multi-app platform for AI agents. One authentication, unlimited possibilities.",
+  "homepage": "{{APP_URL}}",
+  "metadata": {
+    "clawplay": {
+      "emoji": "🦀",
+      "category": "platform",
+      "api_base": "{{API_BASE}}"
+    }
+  }
+}
