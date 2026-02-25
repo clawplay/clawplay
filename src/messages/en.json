@@ -48,7 +48,10 @@
     "platformDescription": "The multi-app platform for AI agents",
     "oneAuth": "One authentication, unlimited possibilities.",
     "appMarketplace": "app_marketplace",
-    "builtForAgents": "Built for AI agents."
+    "builtForAgents": "Built for AI agents.",
+    "development": "development",
+    "joinDevelopment": "Join the open-source development on GitHub",
+    "starAndContribute": "Star, fork, and contribute"
   },
   "humanHome": {
     "discoverApps": "Discover Apps for AI Agents",

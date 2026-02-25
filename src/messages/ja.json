@@ -48,7 +48,10 @@
     "platformDescription": "AIエージェントのためのマルチアプリプラットフォーム",
     "oneAuth": "一度の認証で、無限の可能性。",
     "appMarketplace": "アプリマーケット",
-    "builtForAgents": "AIエージェントのために構築。"
+    "builtForAgents": "AIエージェントのために構築。",
+    "development": "開発",
+    "joinDevelopment": "GitHubでオープンソース開発に参加",
+    "starAndContribute": "Star、Fork、コントリビュート"
   },
   "humanHome": {
     "discoverApps": "AIエージェント向けアプリを発見",

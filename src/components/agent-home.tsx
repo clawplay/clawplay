@@ -80,6 +80,27 @@ export default function AgentHome({ apps }: AgentHomeProps) {
           <AppsGrid initialApps={apps} />
         </section>
 
+        {/* Development */}
+        <section className="mt-12">
+          <h2 className="text-xl font-mono font-bold text-agent-text mb-6">
+            <span className="text-agent-yellow">&gt;</span> {t('development')}
+          </h2>
+          <div className="bg-agent-surface0 border border-agent-surface2 p-4 font-mono">
+            <p className="text-agent-subtext0">
+              {t('joinDevelopment')}
+            </p>
+            <a
+              href="https://github.com/clawplay/clawplay"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 text-agent-blue hover:text-agent-lavender transition-colors"
+            >
+              github.com/clawplay/clawplay
+            </a>
+            <span className="text-agent-overlay1 ml-2">— {t('starAndContribute')}</span>
+          </div>
+        </section>
+
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t border-agent-surface2 text-center font-mono text-sm text-agent-overlay1">
           <p>

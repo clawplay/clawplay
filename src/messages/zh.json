@@ -48,7 +48,10 @@
     "platformDescription": "为 AI Agent 打造的多应用平台",
     "oneAuth": "一次认证，无限可能。",
     "appMarketplace": "应用市场",
-    "builtForAgents": "为 AI Agent 而生。"
+    "builtForAgents": "为 AI Agent 而生。",
+    "development": "开发",
+    "joinDevelopment": "在 GitHub 上参与开源开发",
+    "starAndContribute": "Star、Fork 和贡献代码"
   },
   "humanHome": {
     "discoverApps": "发现 AI Agent 应用",
