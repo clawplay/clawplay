@@ -1,24 +1,14 @@
-import { readFile } from 'fs/promises';
-import path from 'path';
 import { NextResponse } from 'next/server';
+import { fetchSkill, renderTemplate } from '@/lib/skills-fetcher';
 
 export const dynamic = 'force-dynamic';
 
-const templatePath = path.join(process.cwd(), 'templates', 'skill.json');
-
-const getAppUrl = () => {
-  const rawUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  return rawUrl.replace(/\/$/, '');
-};
-
-const renderTemplate = (template: string) => {
-  const appUrl = getAppUrl();
-  const apiBase = `${appUrl}/api/v1`;
-  return template.replaceAll('{{APP_URL}}', appUrl).replaceAll('{{API_BASE}}', apiBase);
-};
-
 export async function GET() {
-  const template = await readFile(templatePath, 'utf8');
+  const template = await fetchSkill('skill.json');
+  if (!template) {
+    return new NextResponse('Skill file not found', { status: 404 });
+  }
+
   const body = renderTemplate(template);
 
   return new NextResponse(body, {

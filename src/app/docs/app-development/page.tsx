@@ -1,27 +1,12 @@
-import { promises as fs } from 'fs';
-import path from 'path';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { fetchSkill } from '@/lib/skills-fetcher';
 import MarkdownRenderer from './markdown-renderer';
 import CopyButton from './copy-button';
 
 async function getAppDevelopmentContent(): Promise<string> {
-  const templatesPath = process.env.NEXT_PUBLIC_TEMPLATES_PATH || './templates';
-  const filePath = path.join(templatesPath, 'app_development.md');
-
-  try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    return content;
-  } catch {
-    // Fallback to project templates directory
-    try {
-      const fallbackPath = path.join(process.cwd(), 'templates', 'app_development.md');
-      const content = await fs.readFile(fallbackPath, 'utf-8');
-      return content;
-    } catch {
-      return '# App Development Guide\n\nDocumentation not found.';
-    }
-  }
+  const content = await fetchSkill('app_development.md');
+  return content ?? '# App Development Guide\n\nDocumentation not found.';
 }
 
 export default async function AppDevelopmentPage() {
