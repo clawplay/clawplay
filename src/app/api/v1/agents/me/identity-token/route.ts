@@ -10,7 +10,7 @@ import {
 import { withAuth } from '@/lib/auth';
 import { generateIdentityToken, hashToken, getTokenPrefix } from '@/lib/crypto';
 
-const IDENTITY_TOKEN_TTL_SECONDS = 300; // 5 minutes
+const IDENTITY_TOKEN_TTL_SECONDS = 3600; // 1 hour
 
 export async function OPTIONS() {
   return handleOptions();

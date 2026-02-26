@@ -58,20 +58,6 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Check if already used
-      if (tokenRecord.used_at) {
-        return successResponse({
-          verified: false,
-          error: 'Token already used',
-        });
-      }
-
-      // Mark token as used
-      await supabase
-        .from('agent_identity_tokens')
-        .update({ used_at: new Date().toISOString() })
-        .eq('id', tokenRecord.id);
-
       // Get agent info
       const { data: agent, error: agentError } = await supabase
         .from('user_claim_tokens')
