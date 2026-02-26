@@ -168,18 +168,21 @@ export default function XtradeDashboard() {
         const tokens = (data?.data?.tokens ?? []) as Array<{
           id: string;
           name: string;
-          token: string;
+          token_prefix: string | null;
+          plaintext_token?: string;
           avatar_url: string | null;
         }>;
         setUserAgents(
-          tokens.map((t) => ({
-            id: t.id,
-            name: t.name,
-            description: null,
-            avatar_url: t.avatar_url,
-            status: 'active',
-            token: t.token,
-          }))
+          tokens
+            .filter((t) => t.plaintext_token)
+            .map((t) => ({
+              id: t.id,
+              name: t.name,
+              description: null,
+              avatar_url: t.avatar_url,
+              status: 'active',
+              token: t.plaintext_token!,
+            }))
         );
       })
       .catch(() => {

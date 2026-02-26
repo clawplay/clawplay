@@ -83,6 +83,10 @@
     "failedDeleteAgent": "删除 Agent 失败。",
     "failedCopyToken": "复制令牌失败。",
     "failedRenameAgent": "重命名 Agent 失败。",
+    "failedRegenerateToken": "重新生成令牌失败。",
+    "regenerate": "重新生成",
+    "regenerating": "正在重新生成...",
+    "hashedHint": "重新生成以显示",
     "nameEmpty": "名称不能为空。",
     "nameTooLong": "名称最多 50 个字符。",
     "clipboardUnavailable": "此浏览器不支持剪贴板。"

@@ -12,7 +12,8 @@ import type { AppWithStats } from '@/lib/types';
 
 interface AgentItem {
   id: string;
-  token: string;
+  token_prefix: string | null;
+  plaintext_token?: string;
   name: string | null;
   avatar_url: string | null;
   last_seen_at: string | null;
@@ -73,6 +74,7 @@ export default function HumanHome({ apps }: HumanHomeProps) {
   const [agentError, setAgentError] = useState<string | null>(null);
   const [creatingAgent, setCreatingAgent] = useState(false);
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null);
+  const [regeneratingAgentId, setRegeneratingAgentId] = useState<string | null>(null);
   const [copiedAgentId, setCopiedAgentId] = useState<string | null>(null);
   const [hiddenAgentIds, setHiddenAgentIds] = useState<Set<string>>(new Set());
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
@@ -150,7 +152,7 @@ export default function HumanHome({ apps }: HumanHomeProps) {
       if (data?.data?.token) {
         const newAgent = data.data.token as AgentItem;
         setAgents((prev) => [newAgent, ...prev]);
-        setHiddenAgentIds((prev) => new Set(prev).add(newAgent.id));
+        // Auto-reveal new token so user can see and copy it
         setAgentState('ready');
       }
     } catch (error) {
@@ -207,10 +209,10 @@ export default function HumanHome({ apps }: HumanHomeProps) {
 
   const handleCopyToken = useCallback(
     async (agent: AgentItem) => {
-      if (hiddenAgentIds.has(agent.id)) return;
+      if (!agent.plaintext_token) return;
       try {
         if (navigator?.clipboard?.writeText) {
-          await navigator.clipboard.writeText(agent.token);
+          await navigator.clipboard.writeText(agent.plaintext_token);
           setCopiedAgentId(agent.id);
           setTimeout(() => setCopiedAgentId(null), 1500);
         } else {
@@ -220,7 +222,7 @@ export default function HumanHome({ apps }: HumanHomeProps) {
         setAgentError(error instanceof Error ? error.message : t('failedCopyToken'));
       }
     },
-    [hiddenAgentIds, t]
+    [t]
   );
 
   const handleStartRename = useCallback((agent: AgentItem) => {
@@ -266,7 +268,13 @@ export default function HumanHome({ apps }: HumanHomeProps) {
 
         if (data?.data?.token) {
           const updated = data.data.token as AgentItem;
-          setAgents((prev) => prev.map((item) => (item.id === agent.id ? updated : item)));
+          setAgents((prev) =>
+            prev.map((item) =>
+              item.id === agent.id
+                ? { ...updated, plaintext_token: item.plaintext_token }
+                : item
+            )
+          );
           setEditingAgentId(null);
           setEditingName('');
         }
@@ -277,6 +285,43 @@ export default function HumanHome({ apps }: HumanHomeProps) {
       }
     },
     [savingName, editingName, t]
+  );
+
+  const handleRegenerateToken = useCallback(
+    async (agent: AgentItem) => {
+      if (regeneratingAgentId) return;
+      setRegeneratingAgentId(agent.id);
+      setAgentError(null);
+
+      try {
+        const response = await fetch(`/api/v1/users/claim-tokens/${agent.id}/regenerate`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          setAgentError(data?.error || t('failedRegenerateToken'));
+          return;
+        }
+
+        if (data?.data?.token) {
+          const updated = data.data.token as AgentItem;
+          setAgents((prev) => prev.map((item) => (item.id === agent.id ? updated : item)));
+          // Auto-reveal the new token
+          setHiddenAgentIds((prev) => {
+            const next = new Set(prev);
+            next.delete(agent.id);
+            return next;
+          });
+        }
+      } catch (error) {
+        setAgentError(error instanceof Error ? error.message : t('failedRegenerateToken'));
+      } finally {
+        setRegeneratingAgentId(null);
+      }
+    },
+    [regeneratingAgentId, t]
   );
 
   return (
@@ -449,14 +494,24 @@ export default function HumanHome({ apps }: HumanHomeProps) {
                             <span className="text-xs uppercase tracking-wide text-human-muted">
                               {tc('token')}
                             </span>
-                            {isHidden && (
-                              <span className="text-[10px] uppercase bg-human-muted/20 text-human-muted px-2 py-1 rounded-brutal border-2 border-human-border">
-                                {tc('hidden')}
+                            {agent.plaintext_token ? (
+                              isHidden ? (
+                                <span className="text-[10px] uppercase bg-human-muted/20 text-human-muted px-2 py-1 rounded-brutal border-2 border-human-border">
+                                  {tc('hidden')}
+                                </span>
+                              ) : null
+                            ) : (
+                              <span className="text-[10px] uppercase bg-yellow-200 text-yellow-800 px-2 py-1 rounded-brutal border-2 border-yellow-400">
+                                {t('hashedHint')}
                               </span>
                             )}
                           </div>
                           <div className="font-mono text-sm text-human-text break-all">
-                            {isHidden ? '••••••••••••••••••••••••••••' : agent.token}
+                            {agent.plaintext_token
+                              ? isHidden
+                                ? '••••••••••••••••••••••••••••'
+                                : agent.plaintext_token
+                              : `${agent.token_prefix ?? ''}...`}
                           </div>
                         </div>
                       </div>
@@ -471,20 +526,31 @@ export default function HumanHome({ apps }: HumanHomeProps) {
                         >
                           {tc('rename')}
                         </button>
+                        {agent.plaintext_token && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyToken(agent)}
+                              className="text-xs font-bold bg-human-accent text-human-text border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm"
+                            >
+                              {copiedAgentId === agent.id ? tc('copied') : tc('copy')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAgent(agent.id)}
+                              className="text-xs font-bold bg-human-muted/20 text-human-text border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm"
+                            >
+                              {isHidden ? tc('show') : tc('hide')}
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
-                          onClick={() => handleCopyToken(agent)}
-                          disabled={isHidden}
-                          className="text-xs font-bold bg-human-accent text-human-text border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleRegenerateToken(agent)}
+                          disabled={regeneratingAgentId === agent.id}
+                          className="text-xs font-bold bg-blue-500 text-white border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {copiedAgentId === agent.id ? tc('copied') : tc('copy')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleAgent(agent.id)}
-                          className="text-xs font-bold bg-human-muted/20 text-human-text border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm"
-                        >
-                          {isHidden ? tc('show') : tc('hide')}
+                          {regeneratingAgentId === agent.id ? t('regenerating') : t('regenerate')}
                         </button>
                         <button
                           type="button"

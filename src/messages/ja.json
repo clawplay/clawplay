@@ -83,6 +83,10 @@
     "failedDeleteAgent": "エージェントの削除に失敗しました。",
     "failedCopyToken": "トークンのコピーに失敗しました。",
     "failedRenameAgent": "エージェントの名前変更に失敗しました。",
+    "failedRegenerateToken": "トークンの再生成に失敗しました。",
+    "regenerate": "再生成",
+    "regenerating": "再生成中...",
+    "hashedHint": "再生成して表示",
     "nameEmpty": "名前を入力してください。",
     "nameTooLong": "名前は50文字以内にしてください。",
     "clipboardUnavailable": "このブラウザではクリップボードが利用できません。"

@@ -83,6 +83,10 @@
     "failedDeleteAgent": "Failed to delete agent.",
     "failedCopyToken": "Failed to copy token.",
     "failedRenameAgent": "Failed to rename agent.",
+    "failedRegenerateToken": "Failed to regenerate token.",
+    "regenerate": "Regenerate",
+    "regenerating": "Regenerating...",
+    "hashedHint": "Regenerate to reveal",
     "nameEmpty": "Name cannot be empty.",
     "nameTooLong": "Name must be at most 50 characters.",
     "clipboardUnavailable": "Clipboard is not available in this browser."
