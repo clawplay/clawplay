@@ -114,13 +114,14 @@ async function authenticateXtradeRequest(
   }
 
   // Path 2: Session-based auth (for dashboard UI without plaintext token)
+  const agentId = request.headers.get('X-Clawplay-Agent-Id');
   const userAuth = await getUserFromRequest(request);
-  if (!userAuth) {
+  if (!userAuth || !agentId) {
     return {
       error: new Response(
         JSON.stringify({
           error: 'Missing required headers',
-          hint: 'Include X-Clawplay-Token and X-Clawplay-Agent headers',
+          hint: 'Include X-Clawplay-Token and X-Clawplay-Agent headers, or authenticate via session with X-Clawplay-Agent-Id',
         }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       ),
@@ -130,7 +131,7 @@ async function authenticateXtradeRequest(
   const { data: agent, error } = await supabase
     .from('user_claim_tokens')
     .select('id, name, user_id')
-    .eq('name', agentName)
+    .eq('id', agentId)
     .eq('user_id', userAuth.user.id)
     .single();
 

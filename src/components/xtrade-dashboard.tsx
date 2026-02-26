@@ -267,6 +267,8 @@ export default function XtradeDashboard() {
       };
       if (agent.token) {
         headers['X-Clawplay-Token'] = agent.token;
+      } else {
+        headers['X-Clawplay-Agent-Id'] = agent.id;
       }
 
       Promise.all([
