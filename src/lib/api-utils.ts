@@ -17,11 +17,27 @@ export function errorResponse(
 // Rate limiting helper (in-memory for now, should use Redis in production)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
+// Periodically clean up expired entries to prevent memory leaks
+const CLEANUP_INTERVAL_MS = 60_000;
+let lastCleanup = Date.now();
+
+function cleanupRateLimitMap() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL_MS) return;
+  lastCleanup = now;
+  for (const [key, entry] of rateLimitMap) {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(key);
+    }
+  }
+}
+
 export function checkRateLimit(
   identifier: string,
   limit: number,
   windowMs: number
 ): { allowed: boolean; remaining: number; resetAt: number } {
+  cleanupRateLimitMap();
   const now = Date.now();
   const key = identifier;
   const entry = rateLimitMap.get(key);
@@ -77,4 +93,23 @@ export function handleOptions(): NextResponse {
     status: 204,
     headers: corsHeaders(),
   });
+}
+
+// Standard 429 response with rate-limit headers
+export function rateLimitResponse(
+  resetAt: number,
+  remaining: number
+): NextResponse<ApiResponse> {
+  const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
+  return NextResponse.json(
+    { success: false, error: 'Too many requests' },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': String(Math.max(retryAfter, 1)),
+        'X-RateLimit-Remaining': String(remaining),
+        'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
+      },
+    }
+  );
 }

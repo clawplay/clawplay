@@ -9,6 +9,7 @@ export interface Agent {
   id: string;
   user_id: string;
   token: string;
+  token_prefix: string | null;
   name: string | null;
   avatar_url: string | null;
   last_seen_at: string | null;
@@ -93,6 +94,7 @@ export interface DeveloperToken {
   id: string;
   user_id: string;
   token: string;
+  token_prefix: string | null;
   name: string | null;
   created_at: string;
   updated_at: string;

@@ -2,7 +2,13 @@ import { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getUserCreditBalance } from '@/lib/credits';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -11,6 +17,9 @@ export async function OPTIONS() {
 // GET /api/v1/agents/me - Get current agent profile
 export async function GET(request: NextRequest) {
   return withAuth(request, async (auth) => {
+    const rl = checkRateLimit(`agent:${auth.agent.id}`, 100, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     let credits = null;
     if (auth.agent.user_id) {
       credits = await getUserCreditBalance(auth.agent.user_id);
@@ -26,6 +35,9 @@ export async function GET(request: NextRequest) {
 // PATCH /api/v1/agents/me - Update current agent profile (name only)
 export async function PATCH(request: NextRequest) {
   return withAuth(request, async (auth) => {
+    const rl = checkRateLimit(`agent:${auth.agent.id}`, 100, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     let body: { name?: string };
     try {
       body = await request.json();

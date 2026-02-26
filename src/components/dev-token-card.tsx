@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl';
 
 interface DeveloperTokenData {
   id: string;
-  token: string;
+  token_prefix: string | null;
+  plaintext_token?: string;
   name: string | null;
   created_at: string;
   updated_at: string;
@@ -49,18 +50,20 @@ export default function DevTokenCard() {
     };
   }, [t]);
 
+  const hasFullToken = !!token?.plaintext_token;
+
   const handleCopy = useCallback(async () => {
-    if (!token || isHidden) return;
+    if (!token?.plaintext_token) return;
     try {
       if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(token.token);
+        await navigator.clipboard.writeText(token.plaintext_token);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('failedCopyToken'));
     }
-  }, [token, isHidden, t]);
+  }, [token, t]);
 
   const handleRegenerate = useCallback(async () => {
     if (regenerating) return;
@@ -139,22 +142,28 @@ export default function DevTokenCard() {
           )}
         </div>
         <div className="font-mono text-sm text-human-text break-all bg-white/50 border-2 border-human-border rounded-brutal p-2">
-          {isHidden ? '••••••••••••••••••••••••••••••••' : token.token}
+          {hasFullToken
+            ? isHidden
+              ? '••••••••••••••••••••••••••••••••'
+              : token.plaintext_token
+            : `${token.token_prefix ?? ''}...`}
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setIsHidden(!isHidden)}
-          className="text-xs font-bold bg-human-muted/20 text-human-text border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm"
-        >
-          {isHidden ? tc('show') : tc('hide')}
-        </button>
+        {hasFullToken && (
+          <button
+            type="button"
+            onClick={() => setIsHidden(!isHidden)}
+            className="text-xs font-bold bg-human-muted/20 text-human-text border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm"
+          >
+            {isHidden ? tc('show') : tc('hide')}
+          </button>
+        )}
         <button
           type="button"
           onClick={handleCopy}
-          disabled={isHidden}
+          disabled={!hasFullToken}
           className="text-xs font-bold bg-human-accent text-human-text border-2 border-human-border rounded-brutal px-3 py-2 shadow-brutal-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {copied ? tc('copied') : tc('copy')}

@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 import { withUserAuth } from '@/lib/user-auth';
 
 export async function OPTIONS() {
@@ -10,6 +16,9 @@ export async function OPTIONS() {
 // GET /api/v1/developers/apps - List developer's apps
 export async function GET(request: NextRequest) {
   return withUserAuth(request, async (auth) => {
+    const rl = checkRateLimit(`user_tokens:${auth.user.id}`, 20, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       const supabase = getSupabaseAdmin();
 
@@ -53,6 +62,9 @@ export async function GET(request: NextRequest) {
 // POST /api/v1/developers/apps - Create a new app
 export async function POST(request: NextRequest) {
   return withUserAuth(request, async (auth) => {
+    const rl = checkRateLimit(`user_tokens:${auth.user.id}`, 20, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       const body = await request.json();
       const { name, slug, skill_url, description, icon_url, category } = body;
@@ -116,11 +128,15 @@ export async function POST(request: NextRequest) {
 
       if (!devToken) {
         // Auto-create developer token
-        const { generateDeveloperToken } = await import('@/lib/crypto');
+        const { generateDeveloperToken, hashToken, getTokenPrefix } = await import('@/lib/crypto');
         const token = generateDeveloperToken();
         const { data: created, error: createError } = await supabase
           .from('developer_tokens')
-          .insert({ user_id: auth.user.id, token })
+          .insert({
+            user_id: auth.user.id,
+            token: hashToken(token),
+            token_prefix: getTokenPrefix(token),
+          })
           .select('id')
           .single();
 

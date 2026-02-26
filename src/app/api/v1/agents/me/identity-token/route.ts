@@ -1,8 +1,14 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 import { withAuth } from '@/lib/auth';
-import { generateIdentityToken } from '@/lib/crypto';
+import { generateIdentityToken, hashToken, getTokenPrefix } from '@/lib/crypto';
 
 const IDENTITY_TOKEN_TTL_SECONDS = 300; // 5 minutes
 
@@ -13,6 +19,9 @@ export async function OPTIONS() {
 // POST /api/v1/agents/me/identity-token - Generate a short-lived identity token
 export async function POST(request: NextRequest) {
   return withAuth(request, async (auth) => {
+    const rl = checkRateLimit(`identity_token:${auth.agent.id}`, 10, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       const supabase = getSupabaseAdmin();
 
@@ -20,10 +29,11 @@ export async function POST(request: NextRequest) {
       const token = generateIdentityToken();
       const expiresAt = new Date(Date.now() + IDENTITY_TOKEN_TTL_SECONDS * 1000);
 
-      // Store the token
+      // Store the hashed token
       const { error: insertError } = await supabase.from('agent_identity_tokens').insert({
         agent_id: auth.agent.id,
-        token,
+        token: hashToken(token),
+        token_prefix: getTokenPrefix(token),
         expires_at: expiresAt.toISOString(),
       });
 

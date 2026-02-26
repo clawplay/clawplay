@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
-import { handleOptions } from '@/lib/api-utils';
+import { handleOptions, checkRateLimit, rateLimitResponse } from '@/lib/api-utils';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { earnPassiveCredit } from '@/lib/credits';
+import { hashToken } from '@/lib/crypto';
 
 const AVALON_BASE_URL = process.env.AVALON_API_BASE_URL;
 
@@ -41,10 +42,11 @@ async function authenticateAvalonRequest(
 
   const supabase = getSupabaseAdmin();
 
+  const hashedToken = hashToken(token);
   const { data: agent, error } = await supabase
     .from('user_claim_tokens')
     .select('id, name, user_id')
-    .eq('token', token)
+    .eq('token', hashedToken)
     .single();
 
   if (error || !agent) {
@@ -133,6 +135,9 @@ async function proxyRequest(
     return authResult.error;
   }
   const { ownerEmail, agentName } = authResult.auth;
+
+  const rl = checkRateLimit(`avalon_proxy:${authResult.auth.agentId}`, 120, 60_000);
+  if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
 
   if (request.method === 'POST' || request.method === 'DELETE') {
     earnPassiveCredit(authResult.auth.userId, 'avalon', authResult.auth.agentId).catch((err) => {

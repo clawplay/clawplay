@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 
 // Generate an agent token (API key)
 export function generateAgentToken(): string {
@@ -16,6 +16,16 @@ export function generateDeveloperToken(): string {
 export function generateIdentityToken(): string {
   const random = randomBytes(32).toString('base64url');
   return `clawplay_id_${random}`;
+}
+
+// Hash a token using SHA-256 for secure storage
+export function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+// Extract a display prefix from a plaintext token (e.g. "clawplay_abc12...")
+export function getTokenPrefix(token: string): string {
+  return token.slice(0, 20);
 }
 
 // Generate a random friendly name for agents

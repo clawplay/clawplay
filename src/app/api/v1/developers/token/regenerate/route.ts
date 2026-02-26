@@ -1,8 +1,14 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 import { withUserAuth } from '@/lib/user-auth';
-import { generateDeveloperToken } from '@/lib/crypto';
+import { generateDeveloperToken, hashToken, getTokenPrefix } from '@/lib/crypto';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -11,6 +17,9 @@ export async function OPTIONS() {
 // POST /api/v1/developers/token/regenerate - Regenerate developer token
 export async function POST(request: NextRequest) {
   return withUserAuth(request, async (auth) => {
+    const rl = checkRateLimit(`user_tokens:${auth.user.id}`, 20, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       const supabase = getSupabaseAdmin();
 
@@ -34,9 +43,9 @@ export async function POST(request: NextRequest) {
       const newToken = generateDeveloperToken();
       const { data: updated, error: updateError } = await supabase
         .from('developer_tokens')
-        .update({ token: newToken })
+        .update({ token: hashToken(newToken), token_prefix: getTokenPrefix(newToken) })
         .eq('id', existing.id)
-        .select('id, user_id, token, name, created_at, updated_at')
+        .select('id, user_id, token_prefix, name, created_at, updated_at')
         .single();
 
       if (updateError || !updated) {
@@ -44,7 +53,10 @@ export async function POST(request: NextRequest) {
         return errorResponse('Failed to regenerate token', 500);
       }
 
-      return successResponse({ developer_token: updated });
+      // Return plaintext token only at regeneration time
+      return successResponse({
+        developer_token: { ...updated, plaintext_token: newToken },
+      });
     } catch (error) {
       console.error('Regenerate token error:', error);
       return errorResponse('Failed to regenerate token', 500);

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from './supabase';
 import { errorResponse, extractBearerToken } from './api-utils';
+import { hashToken } from './crypto';
 import type { Agent, AgentPublicProfile } from './types';
 
 export interface AuthResult {
@@ -23,10 +24,11 @@ export async function authenticateAgent(request: NextRequest): Promise<AuthResul
 
   const supabase = getSupabaseAdmin();
 
+  const hashedToken = hashToken(token);
   const { data: agent, error } = await supabase
     .from('user_claim_tokens')
     .select('*')
-    .eq('token', token)
+    .eq('token', hashedToken)
     .single();
 
   if (error || !agent) {
@@ -79,10 +81,11 @@ export async function getCurrentAgent(token: string): Promise<Agent | null> {
 
   const supabase = getSupabaseAdmin();
 
+  const hashedToken = hashToken(token);
   const { data: agent, error } = await supabase
     .from('user_claim_tokens')
     .select('*')
-    .eq('token', token)
+    .eq('token', hashedToken)
     .single();
 
   if (error || !agent) {

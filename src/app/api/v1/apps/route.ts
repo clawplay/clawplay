@@ -1,6 +1,13 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+  getClientIp,
+} from '@/lib/api-utils';
 
 // Generate skill_url for internal apps
 function getSkillUrl(slug: string, type: string): string | null {
@@ -15,6 +22,10 @@ export async function OPTIONS() {
 
 // GET /api/v1/apps - List all published apps (including developer apps)
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = checkRateLimit(`apps_list:${ip}`, 60, 60_000);
+  if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);

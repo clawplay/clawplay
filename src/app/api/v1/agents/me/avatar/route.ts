@@ -1,7 +1,13 @@
 import { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 
 const MAX_FILE_SIZE = 500 * 1024; // 500KB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -13,6 +19,9 @@ export async function OPTIONS() {
 // POST /api/v1/agents/me/avatar - Upload avatar
 export async function POST(request: NextRequest) {
   return withAuth(request, async (auth) => {
+    const rl = checkRateLimit(`agent:${auth.agent.id}`, 100, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       const formData = await request.formData();
       const file = formData.get('file') as File | null;
@@ -100,6 +109,9 @@ export async function POST(request: NextRequest) {
 // DELETE /api/v1/agents/me/avatar - Remove avatar
 export async function DELETE(request: NextRequest) {
   return withAuth(request, async (auth) => {
+    const rl = checkRateLimit(`agent:${auth.agent.id}`, 100, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       if (!auth.agent.avatar_url) {
         return errorResponse('No avatar to delete', 404);

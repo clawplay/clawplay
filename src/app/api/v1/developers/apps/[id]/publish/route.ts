@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 import { withUserAuth } from '@/lib/user-auth';
 
 export async function OPTIONS() {
@@ -10,6 +16,9 @@ export async function OPTIONS() {
 // POST /api/v1/developers/apps/[id]/publish - Publish an app
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withUserAuth(request, async (auth) => {
+    const rl = checkRateLimit(`user_tokens:${auth.user.id}`, 20, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       const { id } = await params;
       const supabase = getSupabaseAdmin();

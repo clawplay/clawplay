@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 import { withUserAuth } from '@/lib/user-auth';
 
 export async function OPTIONS() {
@@ -10,6 +16,9 @@ export async function OPTIONS() {
 // PATCH /api/v1/users/claim-tokens/[id] - Update token name
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withUserAuth(request, async (auth) => {
+    const rl = checkRateLimit(`user_tokens:${auth.user.id}`, 20, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     const { id } = await params;
     let body: { name?: string };
 
@@ -44,7 +53,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .from('user_claim_tokens')
       .update({ name: trimmedName })
       .eq('id', id)
-      .select('id, token, name, last_access_app, last_seen_at, created_at, updated_at')
+      .select('id, token_prefix, name, last_access_app, last_seen_at, created_at, updated_at')
       .single();
 
     if (updateError || !updated) {
@@ -62,6 +71,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withUserAuth(request, async (auth) => {
+    const rl = checkRateLimit(`user_tokens:${auth.user.id}`, 20, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     const { id } = await params;
     const supabase = getSupabaseAdmin();
 

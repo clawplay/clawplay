@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from './supabase';
 import { errorResponse, extractBearerToken } from './api-utils';
+import { hashToken } from './crypto';
 import type { DeveloperToken } from './types';
 
 export interface DeveloperAuthResult {
@@ -24,10 +25,11 @@ export async function authenticateDeveloper(
 
   const supabase = getSupabaseAdmin();
 
+  const hashedToken = hashToken(token);
   const { data: developer, error } = await supabase
     .from('developer_tokens')
     .select('*')
-    .eq('token', token)
+    .eq('token', hashedToken)
     .single();
 
   if (error || !developer) {

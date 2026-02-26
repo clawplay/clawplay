@@ -1,7 +1,14 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { successResponse, errorResponse, handleOptions } from '@/lib/api-utils';
+import {
+  successResponse,
+  errorResponse,
+  handleOptions,
+  checkRateLimit,
+  rateLimitResponse,
+} from '@/lib/api-utils';
 import { withDeveloperAuth } from '@/lib/developer-auth';
+import { hashToken } from '@/lib/crypto';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -9,7 +16,10 @@ export async function OPTIONS() {
 
 // POST /api/v1/developers/verify-identity - Verify an agent's identity token
 export async function POST(request: NextRequest) {
-  return withDeveloperAuth(request, async () => {
+  return withDeveloperAuth(request, async (auth) => {
+    const rl = checkRateLimit(`dev_verify:${auth.developer.id}`, 60, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     try {
       const body = await request.json();
       const { identity_token } = body;
@@ -25,11 +35,12 @@ export async function POST(request: NextRequest) {
 
       const supabase = getSupabaseAdmin();
 
-      // Find the token
+      // Find the token (hash before lookup)
+      const hashedIdentityToken = hashToken(identity_token);
       const { data: tokenRecord, error: tokenError } = await supabase
         .from('agent_identity_tokens')
         .select('id, agent_id, expires_at, used_at')
-        .eq('token', identity_token)
+        .eq('token', hashedIdentityToken)
         .single();
 
       if (tokenError || !tokenRecord) {

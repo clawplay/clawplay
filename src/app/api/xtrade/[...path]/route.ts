@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
-import { handleOptions } from '@/lib/api-utils';
+import { handleOptions, checkRateLimit, rateLimitResponse, getClientIp } from '@/lib/api-utils';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { earnPassiveCredit } from '@/lib/credits';
+import { hashToken } from '@/lib/crypto';
 
 const XTRADE_BASE_URL = process.env.XTRADE_API_BASE_URL;
 
@@ -47,10 +48,11 @@ async function authenticateXtradeRequest(
 
   const supabase = getSupabaseAdmin();
 
+  const hashedToken = hashToken(token);
   const { data: agent, error } = await supabase
     .from('user_claim_tokens')
     .select('id, name, user_id')
-    .eq('token', token)
+    .eq('token', hashedToken)
     .single();
 
   if (error || !agent) {
@@ -142,6 +144,10 @@ async function proxyRequest(
     if ('error' in authResult) {
       return authResult.error;
     }
+
+    const rl = checkRateLimit(`xtrade_proxy:${authResult.auth.agentId}`, 120, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
+
     ownerEmail = authResult.auth.ownerEmail;
     agentName = authResult.auth.agentName;
 
@@ -150,6 +156,10 @@ async function proxyRequest(
         console.error('[credits] passive credit error:', err);
       });
     }
+  } else {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(`xtrade_public:${ip}`, 120, 60_000);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAt, rl.remaining);
   }
 
   const url = new URL(request.url);
