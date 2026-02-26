@@ -257,25 +257,22 @@ export default function XtradeDashboard() {
 
     const newMap: Record<string, AgentData> = {};
     userAgents.forEach((agent) => {
-      if (!agent.token) {
-        newMap[agent.name] = { account: null, orders: [], positions: [], loading: false, error: null };
-        return;
-      }
       newMap[agent.name] = { account: null, orders: [], positions: [], loading: true, error: null };
     });
     setAgentDataMap(newMap);
 
     userAgents.forEach((agent) => {
-      if (!agent.token) return;
-      const headers = {
-        'X-Clawplay-Token': agent.token,
+      const headers: Record<string, string> = {
         'X-Clawplay-Agent': agent.name,
       };
+      if (agent.token) {
+        headers['X-Clawplay-Token'] = agent.token;
+      }
 
       Promise.all([
-        fetch('/api/xtrade/api/account', { headers }).then((r) => (r.ok ? r.json() : null)),
-        fetch('/api/xtrade/api/orders', { headers }).then((r) => (r.ok ? r.json() : [])),
-        fetch('/api/xtrade/api/positions', { headers }).then((r) => (r.ok ? r.json() : [])),
+        fetch('/api/xtrade/api/account', { headers, credentials: 'include' }).then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/xtrade/api/orders', { headers, credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
+        fetch('/api/xtrade/api/positions', { headers, credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
       ])
         .then(([account, orders, positions]) => {
           setAgentDataMap((prev) => ({

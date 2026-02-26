@@ -3,6 +3,7 @@ import { handleOptions, checkRateLimit, rateLimitResponse, getClientIp } from '@
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { earnPassiveCredit } from '@/lib/credits';
 import { hashToken } from '@/lib/crypto';
+import { getUserFromRequest } from '@/lib/user-auth';
 
 const XTRADE_BASE_URL = process.env.XTRADE_API_BASE_URL;
 
@@ -25,7 +26,96 @@ async function authenticateXtradeRequest(
   const token = request.headers.get('X-Clawplay-Token');
   const agentName = request.headers.get('X-Clawplay-Agent');
 
-  if (!token || !agentName) {
+  if (!agentName) {
+    return {
+      error: new Response(
+        JSON.stringify({
+          error: 'Missing required headers',
+          hint: 'Include X-Clawplay-Agent header',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      ),
+    };
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  // Path 1: Token-based auth (for external agent API calls)
+  if (token) {
+    if (!token.startsWith('clawplay_')) {
+      return {
+        error: new Response(JSON.stringify({ error: 'Invalid token format' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      };
+    }
+
+    const hashedToken = hashToken(token);
+    const { data: agent, error } = await supabase
+      .from('user_claim_tokens')
+      .select('id, name, user_id')
+      .eq('token', hashedToken)
+      .single();
+
+    if (error || !agent) {
+      return {
+        error: new Response(JSON.stringify({ error: 'Invalid token' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      };
+    }
+
+    if (agent.name !== agentName) {
+      return {
+        error: new Response(JSON.stringify({ error: 'Token and agent name mismatch' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      };
+    }
+
+    if (!agent.user_id) {
+      return {
+        error: new Response(JSON.stringify({ error: 'Agent has no owner' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      };
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+      agent.user_id
+    );
+
+    if (userError || !userData?.user?.email) {
+      return {
+        error: new Response(JSON.stringify({ error: 'Failed to resolve owner account' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      };
+    }
+
+    await supabase
+      .from('user_claim_tokens')
+      .update({ last_seen_at: new Date().toISOString(), last_access_app: 'xtrade' })
+      .eq('id', agent.id);
+
+    return {
+      auth: {
+        agentName: agent.name || 'unknown',
+        ownerEmail: userData.user.email,
+        userId: agent.user_id,
+        agentId: agent.id,
+      },
+    };
+  }
+
+  // Path 2: Session-based auth (for dashboard UI without plaintext token)
+  const userAuth = await getUserFromRequest(request);
+  if (!userAuth) {
     return {
       error: new Response(
         JSON.stringify({
@@ -37,57 +127,17 @@ async function authenticateXtradeRequest(
     };
   }
 
-  if (!token.startsWith('clawplay_')) {
-    return {
-      error: new Response(JSON.stringify({ error: 'Invalid token format' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    };
-  }
-
-  const supabase = getSupabaseAdmin();
-
-  const hashedToken = hashToken(token);
   const { data: agent, error } = await supabase
     .from('user_claim_tokens')
     .select('id, name, user_id')
-    .eq('token', hashedToken)
+    .eq('name', agentName)
+    .eq('user_id', userAuth.user.id)
     .single();
 
   if (error || !agent) {
     return {
-      error: new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    };
-  }
-
-  if (agent.name !== agentName) {
-    return {
-      error: new Response(JSON.stringify({ error: 'Token and agent name mismatch' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    };
-  }
-
-  if (!agent.user_id) {
-    return {
-      error: new Response(JSON.stringify({ error: 'Agent has no owner' }), {
+      error: new Response(JSON.stringify({ error: 'Agent not found or not owned by you' }), {
         status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    };
-  }
-
-  const { data: userData, error: userError } = await supabase.auth.admin.getUserById(agent.user_id);
-
-  if (userError || !userData?.user?.email) {
-    return {
-      error: new Response(JSON.stringify({ error: 'Failed to resolve owner account' }), {
-        status: 500,
         headers: { 'Content-Type': 'application/json' },
       }),
     };
@@ -101,8 +151,8 @@ async function authenticateXtradeRequest(
   return {
     auth: {
       agentName: agent.name || 'unknown',
-      ownerEmail: userData.user.email,
-      userId: agent.user_id,
+      ownerEmail: userAuth.user.email!,
+      userId: userAuth.user.id,
       agentId: agent.id,
     },
   };
