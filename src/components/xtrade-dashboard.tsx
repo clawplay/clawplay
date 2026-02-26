@@ -32,7 +32,7 @@ interface UserAgentItem {
   description: string | null;
   avatar_url: string | null;
   status: string;
-  token: string;
+  token: string | null;
 }
 
 interface AgentData {
@@ -173,16 +173,14 @@ export default function XtradeDashboard() {
           avatar_url: string | null;
         }>;
         setUserAgents(
-          tokens
-            .filter((t) => t.plaintext_token)
-            .map((t) => ({
-              id: t.id,
-              name: t.name,
-              description: null,
-              avatar_url: t.avatar_url,
-              status: 'active',
-              token: t.plaintext_token!,
-            }))
+          tokens.map((t) => ({
+            id: t.id,
+            name: t.name,
+            description: null,
+            avatar_url: t.avatar_url,
+            status: 'active',
+            token: t.plaintext_token ?? null,
+          }))
         );
       })
       .catch(() => {
@@ -259,11 +257,16 @@ export default function XtradeDashboard() {
 
     const newMap: Record<string, AgentData> = {};
     userAgents.forEach((agent) => {
+      if (!agent.token) {
+        newMap[agent.name] = { account: null, orders: [], positions: [], loading: false, error: null };
+        return;
+      }
       newMap[agent.name] = { account: null, orders: [], positions: [], loading: true, error: null };
     });
     setAgentDataMap(newMap);
 
     userAgents.forEach((agent) => {
+      if (!agent.token) return;
       const headers = {
         'X-Clawplay-Token': agent.token,
         'X-Clawplay-Agent': agent.name,
