@@ -44,11 +44,11 @@ interface AgentData {
 }
 
 const CHART_COLORS = [
-  { stroke: '#2563eb', gradient: ['#3b82f6', '#1d4ed8'] },
-  { stroke: '#f97316', gradient: ['#fb923c', '#ea580c'] },
-  { stroke: '#16a34a', gradient: ['#22c55e', '#15803d'] },
-  { stroke: '#9333ea', gradient: ['#a855f7', '#7e22ce'] },
-  { stroke: '#0891b2', gradient: ['#22d3ee', '#0e7490'] },
+  { stroke: '#00ff88', gradient: ['#00ff88', '#00cc6a'] },
+  { stroke: '#ff00ff', gradient: ['#ff00ff', '#cc00cc'] },
+  { stroke: '#00d4ff', gradient: ['#00d4ff', '#00a8cc'] },
+  { stroke: '#f59e0b', gradient: ['#f59e0b', '#d97706'] },
+  { stroke: '#ff3366', gradient: ['#ff3366', '#cc2952'] },
 ];
 const CHART_MARGIN = { top: 12, right: 24, bottom: 12, left: 0 };
 
@@ -77,7 +77,6 @@ const formatCompactNumber = (value?: string | number | null) => {
   }).format(num);
 };
 
-// Format Y-axis ticks for realized PnL values
 const formatYAxisTick = (value: number) => {
   if (Math.abs(value) >= 1000000) {
     return (value / 1000000).toFixed(1) + 'M';
@@ -199,7 +198,6 @@ export default function XtradeDashboard() {
     setLeaderboardError(null);
 
     const end = new Date();
-    // Optimization: Always fetch max range (60 days) so we don't need to refetch on zoom
     const start = new Date(end.getTime() - 60 * 24 * 60 * 60 * 1000);
     const params = new URLSearchParams({
       start: start.toISOString(),
@@ -212,15 +210,11 @@ export default function XtradeDashboard() {
         if (!active) return;
         if (!response.ok) throw new Error('Failed to fetch leaderboard');
         const data = (await response.json()) as LeaderboardResponse;
-        // Filter out accounts that have never traded
-        // Note: API returns numeric fields as strings (e.g. "0" not 0)
         const traded = data.filter((e) =>
           e.snapshots.some(
             (s) => s.position_count > 0 || Number(s.realized_pnl) !== 0
           )
         );
-        // Recompute pnl/pnl_percentage client-side from snapshots as fallback,
-        // in case the backend returns 0 for historical trades.
         const enriched = traded.map((e) => {
           if (e.snapshots.length === 0 || Number(e.pnl) !== 0) return e;
           const initialEquity = Number(e.snapshots[0].equity);
@@ -230,7 +224,6 @@ export default function XtradeDashboard() {
           return { ...e, pnl, pnl_percentage: pnlPct };
         });
         setLeaderboard(enriched);
-        // Auto-select top 3 on initial load
         if (traded.length > 0) {
           setSelectedIds(traded.slice(0, 3).map((e) => e.account_id));
         }
@@ -246,7 +239,7 @@ export default function XtradeDashboard() {
     return () => {
       active = false;
     };
-  }, []); // Only fetch once on mount
+  }, []);
 
   // Fetch agent orders and positions
   useEffect(() => {
@@ -326,8 +319,6 @@ export default function XtradeDashboard() {
 
     return Array.from({ length: maxLen }, (_, i) => {
       const row: Record<string, number | string | null> = { index: i + 1 };
-      // Try to find a valid time from any entry if the first one is missing data at this index
-      // Although with aligned filtering, they should align if they have data
       let baseTime: string | undefined;
       for (const entry of filteredSelectedEntries) {
         if (entry.snapshots[i]?.time) {
@@ -355,8 +346,6 @@ export default function XtradeDashboard() {
     }));
   }, [selectedEntries]);
 
-  // Calculate dynamic Y-axis domain with fixed 6 evenly spaced ticks
-  // Always include 0 since this is a PnL chart (profit/loss boundary)
   const yAxisDomain = useMemo((): [number, number] | undefined => {
     if (chartData.length === 0 || filteredSelectedEntries.length === 0) {
       return undefined;
@@ -375,32 +364,27 @@ export default function XtradeDashboard() {
       });
     });
 
-    // Handle case where all values are zero
     if (minVal === 0 && maxVal === 0) {
       return [-100, 100];
     }
 
-    // Add 10% padding so data fills the chart area
     const range = maxVal - minVal;
     const padding = range * 0.1;
 
     return [minVal - padding, maxVal + padding];
   }, [chartData, filteredSelectedEntries]);
 
-  // Generate 6 evenly spaced tick values
   const yAxisTicks = useMemo((): number[] | undefined => {
     if (!yAxisDomain) return undefined;
 
     const [min, max] = yAxisDomain;
-    const step = (max - min) / 5; // 5 steps = 6 ticks
+    const step = (max - min) / 5;
 
     return Array.from({ length: 6 }, (_, i) => min + i * step);
   }, [yAxisDomain]);
 
-  // Zero reference line for realized PnL chart
   const showZeroLine = useMemo(() => {
     if (chartData.length === 0 || filteredSelectedEntries.length === 0) return false;
-    // Show zero line if there are both positive and negative values
     let hasPositive = false;
     let hasNegative = false;
     chartData.forEach((row) => {
@@ -452,21 +436,21 @@ export default function XtradeDashboard() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#f7f8fb] text-slate-900">
+    <main className="cyber-dashboard cyber-scanlines min-h-screen bg-cyber-bg text-cyber-text font-share-tech">
       <div className="flex min-h-screen flex-col">
         {/* Header */}
-        <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6">
+        <header className="flex h-14 items-center justify-between border-b border-cyber-accent/20 bg-cyber-card px-6">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-slate-900">
+            <Link href="/" className="text-sm font-semibold text-cyber-text-muted hover:text-cyber-accent transition-colors">
               {tc('back')}
             </Link>
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-lg text-white">
+              <span className="inline-flex h-9 w-9 items-center justify-center bg-cyber-accent/10 border border-cyber-accent/30 text-lg text-cyber-accent font-orbitron font-bold cyber-chamfer-sm">
                 X
               </span>
               <div>
-                <p className="text-xs font-semibold text-slate-400">{t('clawplayInternal')}</p>
-                <h1 className="text-lg font-bold tracking-tight">{t('xtradeLeaderboard')}</h1>
+                <p className="text-xs font-semibold text-cyber-accent/60 tracking-widest uppercase">{t('clawplayInternal')}</p>
+                <h1 className="text-lg font-bold tracking-tight font-orbitron cyber-glitch-text">{t('xtradeLeaderboard')}</h1>
               </div>
             </div>
           </div>
@@ -474,11 +458,11 @@ export default function XtradeDashboard() {
             <LocaleSwitcher />
             {authState === 'authenticated' ? (
               <>
-                <span className="max-w-[180px] truncate text-slate-600">{authEmail}</span>
+                <span className="max-w-[180px] truncate text-cyber-text-muted">{authEmail}</span>
                 <button
                   onClick={handleSignOut}
                   disabled={authLoading}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:border-slate-500"
+                  className="border border-cyber-accent/30 px-3 py-1.5 font-semibold text-cyber-accent hover:bg-cyber-accent/10 hover:border-cyber-accent/60 transition-all"
                 >
                   {authLoading ? '...' : tc('signOut')}
                 </button>
@@ -486,7 +470,7 @@ export default function XtradeDashboard() {
             ) : (
               <button
                 onClick={handleSignIn}
-                className="rounded-md bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800"
+                className="bg-cyber-accent/10 border border-cyber-accent/40 px-4 py-2 font-semibold text-cyber-accent hover:bg-cyber-accent/20 hover:shadow-neon transition-all"
               >
                 {tc('signIn')}
               </button>
@@ -498,29 +482,33 @@ export default function XtradeDashboard() {
         <div className="flex flex-1 flex-col gap-6 p-6 lg:flex-row">
           {/* Left: Leaderboard List */}
           <aside className="w-full lg:w-72">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="cyber-chamfer border border-cyber-border bg-cyber-card p-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-500">{t('leaderboard')}</h2>
-                <span className="text-xs text-slate-400">{t('selectUpTo5')}</span>
+                <h2 className="text-sm font-semibold text-cyber-accent tracking-wider uppercase font-orbitron">{t('leaderboard')}</h2>
+                <span className="text-xs text-cyber-text-muted">{t('selectUpTo5')}</span>
               </div>
               {leaderboardLoading ? (
-                <p className="mt-4 text-sm text-slate-500">{tc('loading')}</p>
+                <p className="mt-4 text-sm text-cyber-text-muted">{tc('loading')}</p>
               ) : leaderboardError ? (
-                <p className="mt-4 text-sm text-red-500">{leaderboardError}</p>
+                <p className="mt-4 text-sm text-cyber-destructive">{leaderboardError}</p>
               ) : (
                 <div className="mt-4 space-y-2">
                   {leaderboard.map((entry) => (
                     <button
                       key={entry.account_id}
                       onClick={() => handleToggle(entry.account_id)}
-                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition ${
+                      className={`flex w-full items-center justify-between border px-3 py-2 text-left transition-all ${
                         selectedIds.includes(entry.account_id)
-                          ? 'border-slate-900 bg-slate-900 text-white'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
+                          ? 'border-cyber-accent bg-cyber-accent/10 text-cyber-text shadow-neon'
+                          : 'border-cyber-border bg-cyber-muted/30 text-cyber-text-muted hover:border-cyber-accent/40 hover:bg-cyber-muted/50'
                       }`}
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-sm font-semibold text-slate-600">
+                        <div className={`flex h-8 w-8 items-center justify-center text-sm font-bold font-orbitron ${
+                          selectedIds.includes(entry.account_id)
+                            ? 'text-cyber-accent'
+                            : 'text-cyber-text-muted'
+                        }`}>
                           #{entry.rank}
                         </div>
                         <span
@@ -532,40 +520,40 @@ export default function XtradeDashboard() {
                       </div>
                       <div className="text-right">
                         <p
-                          className={`text-sm font-semibold ${entry.pnl_percentage >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+                          className={`text-sm font-semibold ${entry.pnl_percentage >= 0 ? 'text-cyber-accent' : 'text-cyber-destructive'}`}
                         >
                           {formatPercent(entry.pnl_percentage)}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[10px] text-cyber-text-muted">
                           {formatCompactNumber(entry.latest_equity)}
                         </p>
                       </div>
                     </button>
                   ))}
                   {leaderboard.length === 0 && (
-                    <p className="text-sm text-slate-500">{t('noData')}</p>
+                    <p className="text-sm text-cyber-text-muted">{t('noData')}</p>
                   )}
                 </div>
               )}
-              <p className="mt-3 text-center text-[10px] text-slate-400">{t('rankedByPnl')}</p>
+              <p className="mt-3 text-center text-[10px] text-cyber-text-muted">{t('rankedByPnl')}</p>
             </div>
           </aside>
 
           {/* Right: Chart */}
           <section className="flex-1">
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="border border-cyber-border bg-cyber-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                  <p className="text-xs uppercase tracking-[0.3em] text-cyber-accent/60">
                     {t('realizedPnl')}
                   </p>
-                  <h2 className="text-lg font-semibold">{t('performanceComparison')}</h2>
+                  <h2 className="text-lg font-semibold font-orbitron">{t('performanceComparison')}</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <span className="border border-cyber-accent/30 px-3 py-1 text-xs font-semibold text-cyber-accent">
                     {t('lastDays', { days: snapshotDays })}
                   </span>
-                  <span className="hidden text-xs text-slate-400 sm:inline">
+                  <span className="hidden text-xs text-cyber-text-muted sm:inline">
                     {t('scrollToZoom')}
                   </span>
                 </div>
@@ -575,42 +563,42 @@ export default function XtradeDashboard() {
                 {chartLines.map((line) => (
                   <span
                     key={line.id}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700"
+                    className="inline-flex items-center gap-2 border border-cyber-border bg-cyber-muted/30 px-3 py-1 text-xs font-semibold text-cyber-text"
                   >
                     <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: line.color }}
+                      className="h-2 w-2"
+                      style={{ backgroundColor: line.color, boxShadow: `0 0 4px ${line.color}` }}
                     />
                     {line.name}
                   </span>
                 ))}
                 {chartLines.length === 0 && (
-                  <span className="text-sm text-slate-500">{t('selectAccounts')}</span>
+                  <span className="text-sm text-cyber-text-muted">{t('selectAccounts')}</span>
                 )}
               </div>
 
               <div
-                className="mt-6 h-96 rounded-xl border border-slate-100 bg-gradient-to-br from-slate-50 to-slate-100 p-3"
+                className="mt-6 h-96 border border-cyber-border/50 bg-cyber-bg cyber-grid-bg p-3"
                 onWheel={handleChartWheel}
               >
                 {chartData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                  <div className="flex h-full items-center justify-center text-sm text-cyber-text-muted">
                     {t('noChartData')}
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={CHART_MARGIN}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
                       <XAxis
                         dataKey="label"
-                        stroke="#94a3b8"
-                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                        stroke="#6b7280"
+                        tick={{ fill: '#6b7280', fontSize: 11 }}
                         minTickGap={24}
                       />
                       <YAxis
                         tickFormatter={formatYAxisTick}
-                        stroke="#94a3b8"
-                        tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                        stroke="#6b7280"
+                        tick={{ fill: '#6b7280', fontSize: 11, fontWeight: 500 }}
                         width={65}
                         allowDecimals={true}
                         ticks={yAxisTicks}
@@ -620,13 +608,13 @@ export default function XtradeDashboard() {
                       {showZeroLine && (
                         <ReferenceLine
                           y={0}
-                          stroke="#94a3b8"
+                          stroke="#6b7280"
                           strokeDasharray="4 4"
                           strokeWidth={1}
                           label={{
                             value: '0',
                             position: 'right',
-                            fill: '#94a3b8',
+                            fill: '#6b7280',
                             fontSize: 10,
                           }}
                         />
@@ -638,22 +626,24 @@ export default function XtradeDashboard() {
                           return `${sign}${formatNumber(value)}`;
                         }}
                         contentStyle={{
-                          borderRadius: '12px',
-                          border: '1px solid #e2e8f0',
-                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                          borderRadius: '0',
+                          border: '1px solid #00ff88',
+                          boxShadow: '0 0 10px rgba(0, 255, 136, 0.2)',
                           fontSize: '12px',
                           padding: '10px 14px',
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          backgroundColor: 'rgba(18, 18, 26, 0.95)',
+                          color: '#e0e0e0',
+                          fontFamily: 'var(--font-share-tech-mono), monospace',
                         }}
-                        labelStyle={{ fontWeight: 600, marginBottom: '6px', color: '#334155' }}
-                        cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        labelStyle={{ fontWeight: 600, marginBottom: '6px', color: '#00ff88' }}
+                        cursor={{ stroke: '#00ff88', strokeWidth: 1, strokeDasharray: '4 4' }}
                       />
                       <Legend
                         wrapperStyle={{ paddingTop: '12px' }}
                         iconType="circle"
                         iconSize={8}
                         formatter={(value) => (
-                          <span style={{ color: '#475569', fontSize: '11px', fontWeight: 500 }}>
+                          <span style={{ color: '#e0e0e0', fontSize: '11px', fontWeight: 500 }}>
                             {value}
                           </span>
                         )}
@@ -669,8 +659,8 @@ export default function XtradeDashboard() {
                           activeDot={{
                             r: 5,
                             strokeWidth: 2,
-                            stroke: '#fff',
-                            fill: line.color,
+                            stroke: line.color,
+                            fill: '#0a0a0f',
                           }}
                           connectNulls
                           name={line.name}
@@ -685,56 +675,56 @@ export default function XtradeDashboard() {
             </div>
 
             {/* Snapshot Cards */}
-            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+            <div className="mt-6 border border-cyber-border bg-cyber-card p-5">
+              <p className="text-xs uppercase tracking-[0.3em] text-cyber-accent/60">
                 {t('selectedAccounts')}
               </p>
-              <h3 className="text-lg font-semibold">{t('latestSnapshot')}</h3>
+              <h3 className="text-lg font-semibold font-orbitron">{t('latestSnapshot')}</h3>
               <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {selectedEntries.map((entry) => {
                   const snap = entry.snapshots[entry.snapshots.length - 1];
                   return (
                     <div
                       key={entry.account_id}
-                      className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                      className="cyber-corner-accents border border-cyber-border bg-cyber-muted/30 p-4 backdrop-blur-sm"
                     >
                       <div className="flex items-center justify-between">
                         <h4
-                          className="truncate text-sm font-semibold text-slate-700"
+                          className="truncate text-sm font-semibold text-cyber-text"
                           title={formatAgentDisplayName(entry.owner_display_name, entry.username)}
                         >
                           {formatAgentDisplayName(entry.owner_display_name, entry.username)}
                         </h4>
                         <span
-                          className={`text-sm font-semibold ${entry.pnl_percentage >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+                          className={`text-sm font-semibold ${entry.pnl_percentage >= 0 ? 'text-cyber-accent' : 'text-cyber-destructive'}`}
                         >
                           {formatPercent(entry.pnl_percentage)}
                         </span>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-cyber-text-muted">
                         <div>
-                          <p className="text-[10px] uppercase tracking-[0.2em]">{tc('equity')}</p>
-                          <p className="text-sm font-semibold text-slate-700">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">{tc('equity')}</p>
+                          <p className="text-sm font-semibold text-cyber-text">
                             {formatCompactNumber(entry.latest_equity)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-[0.2em]">{t('pnl')}</p>
-                          <p className="text-sm font-semibold text-slate-700">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">{t('pnl')}</p>
+                          <p className="text-sm font-semibold text-cyber-text">
                             {formatNumber(entry.pnl)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-[0.2em]">{tc('balance')}</p>
-                          <p className="text-sm font-semibold text-slate-700">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">{tc('balance')}</p>
+                          <p className="text-sm font-semibold text-cyber-text">
                             {formatCompactNumber(snap?.balance)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-[0.2em]">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">
                             {tc('positions')}
                           </p>
-                          <p className="text-sm font-semibold text-slate-700">
+                          <p className="text-sm font-semibold text-cyber-text">
                             {snap?.position_count ?? '--'}
                           </p>
                         </div>
@@ -743,7 +733,7 @@ export default function XtradeDashboard() {
                   );
                 })}
                 {selectedEntries.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                  <div className="border border-dashed border-cyber-border p-6 text-center text-sm text-cyber-text-muted">
                     {t('selectToViewSnapshots')}
                   </div>
                 )}
@@ -753,32 +743,32 @@ export default function XtradeDashboard() {
         </div>
 
         {/* My Agents Section */}
-        <div className="border-t border-slate-200 bg-white px-6 py-6">
+        <div className="border-t border-cyber-accent/20 bg-cyber-card px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{t('myAgents')}</p>
-              <h2 className="text-lg font-semibold">{t('positionsAndOrders')}</h2>
+              <p className="text-xs uppercase tracking-[0.3em] text-cyber-accent/60">{t('myAgents')}</p>
+              <h2 className="text-lg font-semibold font-orbitron">{t('positionsAndOrders')}</h2>
             </div>
           </div>
 
           {authState === 'checking' ? (
-            <div className="mt-6 text-center text-sm text-slate-500">{t('checkingAuth')}</div>
+            <div className="mt-6 text-center text-sm text-cyber-text-muted">{t('checkingAuth')}</div>
           ) : authState === 'unauthenticated' ? (
-            <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-              <p className="text-slate-600">{t('signInToView')}</p>
+            <div className="mt-6 border border-dashed border-cyber-border bg-cyber-muted/20 p-8 text-center">
+              <p className="text-cyber-text-muted">{t('signInToView')}</p>
               <button
                 onClick={handleSignIn}
-                className="mt-4 rounded-md bg-slate-900 px-6 py-2 font-semibold text-white hover:bg-slate-800"
+                className="mt-4 bg-cyber-accent/10 border border-cyber-accent/40 px-6 py-2 font-semibold text-cyber-accent hover:bg-cyber-accent/20 hover:shadow-neon transition-all"
               >
                 {t('signInButton')}
               </button>
             </div>
           ) : userAgents.length === 0 ? (
-            <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-              <p className="text-slate-600">{t('noAgentsYet')}</p>
+            <div className="mt-6 border border-dashed border-cyber-border bg-cyber-muted/20 p-8 text-center">
+              <p className="text-cyber-text-muted">{t('noAgentsYet')}</p>
               <button
                 onClick={handleCreateAgent}
-                className="mt-4 inline-block rounded-md bg-slate-900 px-6 py-2 font-semibold text-white hover:bg-slate-800"
+                className="mt-4 bg-cyber-accent/10 border border-cyber-accent/40 px-6 py-2 font-semibold text-cyber-accent hover:bg-cyber-accent/20 hover:shadow-neon transition-all"
               >
                 {t('createAgent')}
               </button>
@@ -802,30 +792,34 @@ export default function XtradeDashboard() {
                 return (
                   <div
                     key={agent.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                    className="border border-cyber-border bg-cyber-muted/20 p-4"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-600">
-                        {agent.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-slate-800">{agent.name}</h3>
-                        <p className="text-xs text-slate-500">
+                    {/* Terminal-style header bar */}
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-cyber-border/50">
+                      <span className="h-2.5 w-2.5 rounded-full bg-cyber-destructive/80" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]/80" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-cyber-accent/80" />
+                      <div className="flex-1 min-w-0 ml-2">
+                        <h3 className="font-semibold text-cyber-text font-orbitron">{agent.name}</h3>
+                        <p className="text-xs text-cyber-text-muted">
                           {agent.description || t('noDescription')}
                         </p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center border border-cyber-accent/30 bg-cyber-accent/5 text-sm font-bold text-cyber-accent font-orbitron">
+                        {agent.name.charAt(0).toUpperCase()}
                       </div>
                     </div>
 
                     {data?.loading ? (
-                      <p className="mt-4 text-sm text-slate-500">{tc('loading')}</p>
+                      <p className="text-sm text-cyber-text-muted">{tc('loading')}</p>
                     ) : data?.error ? (
-                      <p className="mt-4 text-sm text-red-500">{data.error}</p>
+                      <p className="text-sm text-cyber-destructive">{data.error}</p>
                     ) : !account && positions.length === 0 && orders.length === 0 ? (
-                      <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-white p-4 text-center">
-                        <p className="text-slate-600">{t('neverPlayed', { name: agent.name })}</p>
-                        <p className="mt-2 text-sm text-slate-500">
+                      <div className="border border-dashed border-cyber-border bg-cyber-bg/50 p-4 text-center">
+                        <p className="text-cyber-text-muted">{t('neverPlayed', { name: agent.name })}</p>
+                        <p className="mt-2 text-sm text-cyber-text-muted">
                           {t('dropSkillUrl')}{' '}
-                          <code className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                          <code className="bg-cyber-muted px-2 py-1 text-xs text-cyber-accent border border-cyber-accent/20">
                             {typeof window !== 'undefined' ? window.location.origin : ''}
                             /apps/xtrade/skill.md
                           </code>
@@ -835,38 +829,38 @@ export default function XtradeDashboard() {
                       <>
                         {/* Account Summary */}
                         {account && (
-                          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <div className="rounded-lg border border-slate-200 bg-white p-3">
-                              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            <div className="border border-cyber-border bg-cyber-bg/50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">
                                 {tc('balance')}
                               </p>
-                              <p className="text-sm font-semibold text-slate-700">
+                              <p className="text-sm font-semibold text-cyber-text">
                                 {formatNumber(account.balance)}
                               </p>
                             </div>
-                            <div className="rounded-lg border border-slate-200 bg-white p-3">
-                              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                            <div className="border border-cyber-border bg-cyber-bg/50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">
                                 {tc('equity')}
                               </p>
-                              <p className="text-sm font-semibold text-slate-700">
+                              <p className="text-sm font-semibold text-cyber-text">
                                 {equity !== null ? formatNumber(equity) : '--'}
                               </p>
                             </div>
-                            <div className="rounded-lg border border-slate-200 bg-white p-3">
-                              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                            <div className="border border-cyber-border bg-cyber-bg/50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">
                                 {t('unrealizedPnl')}
                               </p>
                               <p
-                                className={`text-sm font-semibold ${unrealizedPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+                                className={`text-sm font-semibold ${unrealizedPnl >= 0 ? 'text-cyber-accent' : 'text-cyber-destructive'}`}
                               >
                                 {formatNumber(unrealizedPnl)}
                               </p>
                             </div>
-                            <div className="rounded-lg border border-slate-200 bg-white p-3">
-                              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                            <div className="border border-cyber-border bg-cyber-bg/50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-cyber-accent/50">
                                 {tc('positions')}
                               </p>
-                              <p className="text-sm font-semibold text-slate-700">
+                              <p className="text-sm font-semibold text-cyber-text">
                                 {positions.length}
                               </p>
                             </div>
@@ -876,7 +870,7 @@ export default function XtradeDashboard() {
                         <div className="mt-4 grid gap-4 lg:grid-cols-2">
                           {/* Positions */}
                           <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-cyber-accent/60">
                               {t('positionsCount', { count: positions.length })}
                             </p>
                             <div className="mt-2 space-y-2">
@@ -888,19 +882,19 @@ export default function XtradeDashboard() {
                                 return (
                                   <div
                                     key={pos.id}
-                                    className="rounded-md border border-slate-200 bg-white p-3"
+                                    className="border border-cyber-border bg-cyber-bg/50 p-3"
                                   >
                                     <div className="flex items-center justify-between">
-                                      <span className="font-semibold text-slate-700">
+                                      <span className="font-semibold text-cyber-text">
                                         {pos.symbol}
                                       </span>
                                       <span
-                                        className={`text-sm font-semibold ${pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+                                        className={`text-sm font-semibold ${pnl >= 0 ? 'text-cyber-accent' : 'text-cyber-destructive'}`}
                                       >
                                         {formatNumber(pnl)}
                                       </span>
                                     </div>
-                                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-cyber-text-muted">
                                       <span>{pos.side.toUpperCase()}</span>
                                       <span>{t('qty', { value: formatNumber(pos.quantity) })}</span>
                                       <span>
@@ -925,44 +919,44 @@ export default function XtradeDashboard() {
                                 );
                               })}
                               {positions.length > 5 && (
-                                <p className="text-xs text-slate-400">
+                                <p className="text-xs text-cyber-text-muted">
                                   {tc('more', { count: positions.length - 5 })}
                                 </p>
                               )}
                               {positions.length === 0 && (
-                                <p className="text-sm text-slate-400">{t('noPositions')}</p>
+                                <p className="text-sm text-cyber-text-muted">{t('noPositions')}</p>
                               )}
                             </div>
                           </div>
 
                           {/* Orders */}
                           <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-cyber-accent/60">
                               {t('orders', { count: orders.length })}
                             </p>
                             <div className="mt-2 space-y-2">
                               {orders.slice(0, 5).map((order) => (
                                 <div
                                   key={order.id}
-                                  className="rounded-md border border-slate-200 bg-white p-3"
+                                  className="border border-cyber-border bg-cyber-bg/50 p-3"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-slate-700">
+                                    <span className="font-semibold text-cyber-text">
                                       {order.symbol}
                                     </span>
                                     <span
-                                      className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                                      className={`px-2 py-0.5 text-xs font-semibold border ${
                                         order.status === 'filled'
-                                          ? 'bg-emerald-100 text-emerald-700'
+                                          ? 'border-cyber-accent/30 bg-cyber-accent/10 text-cyber-accent'
                                           : order.status === 'pending'
-                                            ? 'bg-amber-100 text-amber-700'
-                                            : 'bg-slate-100 text-slate-600'
+                                            ? 'border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]'
+                                            : 'border-cyber-border bg-cyber-muted/30 text-cyber-text-muted'
                                       }`}
                                     >
                                       {order.status}
                                     </span>
                                   </div>
-                                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-cyber-text-muted">
                                     <span>{order.side.toUpperCase()}</span>
                                     <span>{order.order_type}</span>
                                     <span>{t('qty', { value: formatNumber(order.quantity) })}</span>
@@ -972,15 +966,22 @@ export default function XtradeDashboard() {
                                       </span>
                                     )}
                                   </div>
+                                  {/* Reason field - terminal-style quote */}
+                                  {order.reason && (
+                                    <div className="mt-2 text-xs text-cyber-accent/80" style={{ textShadow: '0 0 4px rgba(0, 255, 136, 0.3)' }}>
+                                      <span className="text-cyber-accent/50">{`> `}</span>
+                                      <span>&quot;{order.reason}&quot;</span>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                               {orders.length > 5 && (
-                                <p className="text-xs text-slate-400">
+                                <p className="text-xs text-cyber-text-muted">
                                   {tc('more', { count: orders.length - 5 })}
                                 </p>
                               )}
                               {orders.length === 0 && (
-                                <p className="text-sm text-slate-400">{t('noOrders')}</p>
+                                <p className="text-sm text-cyber-text-muted">{t('noOrders')}</p>
                               )}
                             </div>
                           </div>

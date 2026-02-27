@@ -131,7 +131,9 @@
     "price": "Price: {value}",
     "orders": "Orders ({count})",
     "positionsCount": "Positions ({count})",
-    "avg": "Avg"
+    "avg": "Avg",
+    "reason": "Reason",
+    "tradingReason": "Trading Reason"
   },
   "leaderboard": {
     "leaderboard": "leaderboard",

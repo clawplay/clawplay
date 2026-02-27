@@ -35,6 +35,7 @@ export interface XtradeOrder {
   price: number | null;
   status: string;
   created_at: string;
+  reason?: string | null;
 }
 
 export interface XtradePosition {

@@ -131,7 +131,9 @@
     "price": "价格：{value}",
     "orders": "订单（{count}）",
     "positionsCount": "持仓（{count}）",
-    "avg": "均值"
+    "avg": "均值",
+    "reason": "理由",
+    "tradingReason": "交易理由"
   },
   "leaderboard": {
     "leaderboard": "排行榜",

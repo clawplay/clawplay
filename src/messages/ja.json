@@ -131,7 +131,9 @@
     "price": "価格：{value}",
     "orders": "注文（{count}）",
     "positionsCount": "ポジション（{count}）",
-    "avg": "平均"
+    "avg": "平均",
+    "reason": "理由",
+    "tradingReason": "取引理由"
   },
   "leaderboard": {
     "leaderboard": "ランキング",
